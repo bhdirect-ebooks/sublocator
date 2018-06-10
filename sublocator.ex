@@ -67,34 +67,48 @@ defmodule Sublocator do
   defp locate_inline(line_tup, patt, start_col)
 
   defp locate_inline({line_str, line}, %Regex{} = patt, start_col) do
-    case Regex.run(patt, line_str, return: :index) do
-      nil ->
-        []
+    {matches, non_matches} =
+      Regex.split(patt, line_str, include_captures: true)
+      |> Enum.split_with(&Regex.match?(patt, &1))
 
-      locs ->
-        locs
-        |> Enum.filter(&(elem(&1, 0) + 1 >= start_col))
-        |> Enum.map(&new(line, elem(&1, 0) + 1))
-    end
+    non_matches
+    |> do_inline(matches)
+    |> report_locs(line, start_col)
   end
 
-  defp locate_inline({line_str, line}, patt, start_col) do
+  defp locate_inline({line_str, line}, patt, start_col) when is_binary(patt) do
     String.split(line_str, patt)
     |> do_inline(String.length(patt))
+    |> report_locs(line, start_col)
+  end
+
+  defp report_locs(hits, line, start_col) do
+    hits
     |> Enum.filter(&(&1 >= start_col))
     |> Enum.map(&new(line, &1))
   end
 
-  defp do_inline([h, nh | tail], patt_len) do
+  defp do_inline([h, nh | tail], patt_len) when is_integer(patt_len) do
     col = String.length(h) + 1
     [col] ++ do_inline([nh | tail], patt_len, col)
   end
 
+  defp do_inline([h, nh | tail], matches) do
+    col = String.length(h) + 1
+    [col] ++ do_inline([nh | tail], matches, col)
+  end
+
   defp do_inline([_], _patt_len), do: []
 
-  defp do_inline([h, nh | tail], patt_len, at_len) do
+  defp do_inline([h, nh | tail], patt_len, at_len) when is_integer(patt_len) do
     col = String.length(h)
     [col] ++ do_inline([nh | tail], patt_len, at_len + patt_len + col)
+  end
+
+  defp do_inline([h, nh | tail], [first | rest], at_len) do
+    col = String.length(h)
+    match_len = String.length(first)
+    [col] ++ do_inline([nh | tail], rest, at_len + match_len + col)
   end
 
   defp do_inline([_], _patt_len, _at_len), do: []

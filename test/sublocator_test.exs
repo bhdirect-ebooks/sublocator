@@ -27,6 +27,11 @@ defmodule SublocatorTest do
     assert actual == {:ok, [%Sublocator{line: 13, col: 7}]}
   end
 
+  test "locates with simple regex pattern" do
+    actual = Sublocator.locate("dswuuhå∂œ¥éüüu", ~r/é/, at_most: :all)
+    assert actual === {:ok, [%Sublocator{line: 1, col: 11}]}
+  end
+
   test "locates all regex occurrences", context do
     {:ok, html} = context.test_file
 
