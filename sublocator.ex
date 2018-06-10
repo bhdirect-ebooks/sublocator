@@ -67,9 +67,15 @@ defmodule Sublocator do
   defp locate_inline(line_tup, patt, start_col)
 
   defp locate_inline({line_str, line}, %Regex{} = patt, start_col) do
-    Regex.run(patt, line_str, return: :index)
-    |> Enum.filter(&(elem(&1, 0) >= start_col))
-    |> Enum.map(&new(line, elem(&1, 0)))
+    case Regex.run(patt, line_str, return: :index) do
+      nil ->
+        []
+
+      locs ->
+        locs
+        |> Enum.filter(&(elem(&1, 0) + 1 >= start_col))
+        |> Enum.map(&new(line, elem(&1, 0) + 1))
+    end
   end
 
   defp locate_inline({line_str, line}, patt, start_col) do
