@@ -6,6 +6,15 @@ defmodule SublocatorTest do
     %{test_file: File.read("test/ActsExe102_body02_chapter01.xhtml")}
   end
 
+  test "accepts only a string as primary parameter" do
+    assert Sublocator.locate(:html, "h", at_most: 0) === {:error, "intended only for a string"}
+  end
+
+  test "returns error for bad :at_most value" do
+    assert Sublocator.locate("html", "h", at_most: 0) ===
+             {:error, ":at_most value must be greater than 0 or :all"}
+  end
+
   test "returns empty list for no occurrence", context do
     {:ok, html} = context.test_file
     {:ok, actual} = Sublocator.locate(html, "p class=\"survival\"", at_most: 99)
@@ -58,7 +67,7 @@ defmodule SublocatorTest do
   end
 
   test "locates with simple regex pattern" do
-    {:ok, actual} = Sublocator.locate("dswuuhå∂œ¥éüüu", ~r/é/, at_most: :all)
+    {:ok, actual} = Sublocator.locate("dswuuhå∂œ¥éüüu", ~r{é}, at_most: :all)
     assert actual === [%Sublocator{line: 1, col: 11}]
   end
 
@@ -68,7 +77,7 @@ defmodule SublocatorTest do
     {:ok, actual} =
       Sublocator.locate(
         html,
-        ~r/<span epub:type="pagebreak" id="page\d+" title="\d+"><\/span>/,
+        ~r{<span epub:type="pagebreak" id="page\d+" title="\d+"></span>},
         at_most: :all
       )
 
@@ -123,7 +132,7 @@ defmodule SublocatorTest do
     {:ok, actual} =
       Sublocator.locate(
         html,
-        ~r/<sup class="fn" id="note-backlink-[^"]+">/,
+        ~r{<sup class="fn" id="note-backlink-[^"]+">},
         at_most: 2
       )
 

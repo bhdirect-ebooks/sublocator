@@ -43,7 +43,7 @@ defmodule Sublocator do
   end
 
   defp do_locate(_lines, _pattern, cnt, _start) when is_integer(cnt) and cnt <= 0 do
-    at_most_err()
+    {:error, ":at_most value must be greater than 0 or :all"}
   end
 
   defp do_locate(lines, pattern, cnt, start) when is_integer(cnt) do
@@ -54,12 +54,8 @@ defmodule Sublocator do
     {:ok, locs}
   end
 
-  defp do_locate(_lines, _pattern, _cnt, _start), do: at_most_err()
-
-  defp at_most_err, do: {:error, ":at_most value must be greater than 0 or :all"}
-
   defp stream_lines(string) do
-    String.split(string, "\n")
+    Regex.split(~r{(?:\r\n|\n|\r)}, string)
     |> Stream.with_index(1)
   end
 
