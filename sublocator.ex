@@ -20,7 +20,7 @@ defmodule Sublocator do
 
   def locate(string, pattern, opts) when is_binary(string) do
     at_most = Keyword.get(opts, :at_most, :all)
-    start_loc = Keyword.get(opts, :after, new(0, 0))
+    start_loc = Keyword.get(opts, :start, new(0, 0))
 
     stream_lines(string)
     |> do_locate(pattern, at_most, start_loc)
@@ -30,8 +30,7 @@ defmodule Sublocator do
 
   defp stream_locations(lines, pattern, start) do
     lines
-    |> Stream.flat_map(&locate_inline(&1, pattern, start.col))
-    |> Stream.filter(&(&1.line >= start.line))
+    |> Stream.flat_map(&locate_inline(&1, pattern, start))
   end
 
   defp do_locate(lines, pattern, :all, start) do
@@ -59,10 +58,13 @@ defmodule Sublocator do
     |> Stream.with_index(1)
   end
 
-  @spec locate_inline({binary, integer}, pattern, integer) :: list(t)
-  defp locate_inline(line_tup, patt, start_col)
+  @spec locate_inline({binary, integer}, pattern, t) :: list(t)
+  defp locate_inline(line_tup, patt, start)
 
-  defp locate_inline({line_str, line}, %Regex{} = patt, start_col) do
+  defp locate_inline({line_str, line}, %Regex{} = patt, %Sublocator{line: sl, col: sc})
+       when line >= sl do
+    start_col = if line == sl, do: sc, else: 0
+
     {matches, non_matches} =
       Regex.split(patt, line_str, include_captures: true)
       |> Enum.split_with(&Regex.match?(patt, &1))
@@ -72,11 +74,16 @@ defmodule Sublocator do
     |> report_locs(line, start_col)
   end
 
-  defp locate_inline({line_str, line}, patt, start_col) when is_binary(patt) do
+  defp locate_inline({line_str, line}, patt, %Sublocator{line: sl, col: sc})
+       when is_binary(patt) and line >= sl do
+    start_col = if line == sl, do: sc, else: 0
+
     String.split(line_str, patt)
     |> do_inline(String.length(patt))
     |> report_locs(line, start_col)
   end
+
+  defp locate_inline(_line_tup, _patt, _start), do: []
 
   defp report_locs(hits, line, start_col) do
     hits
