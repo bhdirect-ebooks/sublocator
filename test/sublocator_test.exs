@@ -74,6 +74,13 @@ defmodule SublocatorTest do
     assert actual === [%{line: 582, col: 687}]
   end
 
+  test "locates a list of substrings", context do
+    {:ok, html} = context.test_file
+    {:ok, actual} = Sublocator.locate(html, ["epub:type", "<h2"])
+
+    assert Enum.count(actual) == 458
+  end
+
   test "locates with simple regex pattern" do
     {:ok, actual} = Sublocator.locate("dswuuhå∂œ¥éüüu", ~r{é}, at_most: :all)
     assert actual === [%{line: 1, col: 11}]

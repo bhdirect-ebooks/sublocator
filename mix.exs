@@ -44,7 +44,7 @@ defmodule Sublocator.MixProject do
   end
 
   defp description do
-    "Returns line and column location(s) of a substring or Regex pattern in a given string."
+    "Returns a list of line and column location(s) of a substring or Regex pattern in a given string."
   end
 
   defp package do

@@ -5,7 +5,7 @@ defmodule Sublocator do
   alias __MODULE__
 
   @type t :: %{line: integer, col: integer}
-  @type pattern :: binary | Regex.t()
+  @type pattern :: binary | list(binary) | Regex.t()
   @type at_most :: :all | integer
 
   @spec new(integer, integer) :: t
@@ -13,8 +13,55 @@ defmodule Sublocator do
     %{line: line, col: col}
   end
 
+  @doc ~S"""
+  Finds line and coloumn location(s) of a pattern in a given string.
+
+  Returns a list of these locations or an empty list if not found.
+  The pattern can be a string, a list of strings, or a regular
+  expression.
+
+  The returned locations are listed in the order found, from top to
+  bottom, left to right.
+
+  All locations are reported in the list by default but can be
+  controlled via the `:at_most` option.
+
+  By default, the pattern is located from the beginning of the string,
+  but the `:start` option can be used to report locations starting at
+  a later point.
+
+  ## Options
+    * `:at_most` (positive integer or `:all`) - the number of locations
+      returned is at most as many as this option specifies.
+      If `:all`, all found locations are returned. Defaults to `:all`.
+
+    * `:start` (`%{line: integer, col: integer}`) - only locations >= the
+      starting point specified by this option are returned; otherwise,
+      the string is searched from the beginning.
+
+  ## Examples
+  Locating with a string:
+      iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a")
+      {:ok, [%{line: 2, col: 6}, %{line: 2, col: 11}, %{line: 2, col: 16}]}
+      iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a", at_most: 1)
+      {:ok, [%{line: 2, col: 6}]}
+      iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a", start: %{line: 2, col: 11})
+      {:ok, [%{line: 2, col: 11}, %{line: 2, col: 16}]}
+  A list of strings:
+      iex> Sublocator.locate("<h2>\n  <span class=\"a\"", ["h", "l"])
+      {:ok, [%{line: 1, col: 2}, %{line: 2, col: 10}]
+  A regular expression:
+      iex> Sublocator.locate("<h2>\n  <span class=\"a\"", ~r{<(?!h)})
+      {:ok, [%{line: 2, col: 3}]}
+  """
   @spec locate(binary, pattern, keyword) :: {atom, list(t) | binary}
   def locate(string, pattern, opts \\ [])
+
+  def locate(string, pattern, opts) when is_binary(string) and is_list(pattern) do
+    joined = Enum.map(pattern, &Regex.escape(&1)) |> Enum.join("|")
+    regexp = Regex.compile!("(?:#{joined})")
+    locate(string, regexp, opts)
+  end
 
   def locate(string, pattern, opts) when is_binary(string) do
     at_most = Keyword.get(opts, :at_most, :all)
