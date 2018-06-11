@@ -19,21 +19,21 @@ defmodule SublocatorTest do
     {:ok, html} = context.test_file
     {:ok, actual} = Sublocator.locate(html, "p class=\"survival\"", at_most: 99)
 
-    assert actual == []
+    assert actual === []
   end
 
   test "locates first substring occurrence", context do
     {:ok, html} = context.test_file
     {:ok, actual} = Sublocator.locate(html, "<h2", at_most: 1)
 
-    assert actual == [%{line: 13, col: 7}]
+    assert actual === [%{line: 13, col: 7}]
   end
 
   test "locates all substring occurrences", context do
     {:ok, html} = context.test_file
     {:ok, actual} = Sublocator.locate(html, "<h2", at_most: :all)
 
-    assert actual ==
+    assert actual ===
              [
                %{line: 13, col: 7},
                %{line: 18, col: 7},
@@ -52,14 +52,14 @@ defmodule SublocatorTest do
 
     {:ok, actual} = Sublocator.locate(html, "<h2", at_most: 1, start: %{line: 121, col: 8})
 
-    assert actual == [%{line: 142, col: 7}]
+    assert actual === [%{line: 142, col: 7}]
   end
 
   test "locates many substring occurrences", context do
     {:ok, html} = context.test_file
     {:ok, actual} = Sublocator.locate(html, "epub:type")
 
-    assert Enum.count(actual) == 449
+    assert Enum.count(actual) === 449
   end
 
   test "locates a more particular substring", context do
@@ -78,7 +78,7 @@ defmodule SublocatorTest do
     {:ok, html} = context.test_file
     {:ok, actual} = Sublocator.locate(html, ["epub:type", "<h2"])
 
-    assert Enum.count(actual) == 458
+    assert Enum.count(actual) === 458
   end
 
   test "locates with simple regex pattern" do
@@ -96,7 +96,7 @@ defmodule SublocatorTest do
         at_most: :all
       )
 
-    assert actual ==
+    assert actual ===
              [
                %{line: 9, col: 34},
                %{line: 20, col: 167},

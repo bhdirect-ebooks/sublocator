@@ -4,6 +4,8 @@ defmodule Sublocator do
   """
   alias __MODULE__
 
+  @col_offset 1
+
   @type t :: %{line: integer, col: integer}
   @type pattern :: binary | list(binary) | Regex.t()
   @type at_most :: :all | integer
@@ -42,14 +44,16 @@ defmodule Sublocator do
   ## Examples
   Locating with a string:
       iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a")
-      {:ok, [%{line: 2, col: 6}, %{line: 2, col: 11}, %{line: 2, col: 16}]}
+      {:ok, [%{line: 2, col: 6}, %{line: 2, col: 10}, %{line: 2, col: 15}]}
       iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a", at_most: 1)
       {:ok, [%{line: 2, col: 6}]}
-      iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a", start: %{line: 2, col: 11})
-      {:ok, [%{line: 2, col: 11}, %{line: 2, col: 16}]}
+      iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a", [start: %{line: 2, col: 10}])
+      {:ok, [%{line: 2, col: 10}, %{line: 2, col: 15}]}
+
   A list of strings:
       iex> Sublocator.locate("<h2>\n  <span class=\"a\"", ["h", "l"])
-      {:ok, [%{line: 1, col: 2}, %{line: 2, col: 10}]
+      {:ok, [%{line: 1, col: 2}, %{line: 2, col: 10}]}
+
   A regular expression:
       iex> Sublocator.locate("<h2>\n  <span class=\"a\"", ~r{<(?!h)})
       {:ok, [%{line: 2, col: 3}]}
@@ -100,7 +104,7 @@ defmodule Sublocator do
 
   defp stream_lines(string) do
     Regex.split(~r{(?:\r\n|\n|\r)}, string)
-    |> Stream.with_index(1)
+    |> Stream.with_index(@col_offset)
   end
 
   @spec locate_inline({binary, integer}, pattern, t) :: list(t)
@@ -137,26 +141,26 @@ defmodule Sublocator do
   end
 
   defp do_inline([h, nh | tail], patt_len) when is_integer(patt_len) do
-    col = String.length(h) + 1
+    col = String.length(h) + @col_offset
     [col] ++ do_inline([nh | tail], patt_len, col)
   end
 
   defp do_inline([h, nh | tail], matches) do
-    col = String.length(h) + 1
+    col = String.length(h) + @col_offset
     [col] ++ do_inline([nh | tail], matches, col)
   end
 
   defp do_inline([_], _patt_len), do: []
 
   defp do_inline([h, nh | tail], patt_len, at_len) when is_integer(patt_len) do
-    col = String.length(h)
-    [col] ++ do_inline([nh | tail], patt_len, at_len + patt_len + col)
+    col = String.length(h) + at_len
+    [col] ++ do_inline([nh | tail], patt_len, patt_len + col)
   end
 
   defp do_inline([h, nh | tail], [first | rest], at_len) do
-    col = String.length(h)
+    col = String.length(h) + at_len
     match_len = String.length(first)
-    [col] ++ do_inline([nh | tail], rest, at_len + match_len + col)
+    [col] ++ do_inline([nh | tail], rest, match_len + col)
   end
 
   defp do_inline([_], _patt_len, _at_len), do: []
