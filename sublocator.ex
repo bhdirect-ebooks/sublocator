@@ -4,15 +4,13 @@ defmodule Sublocator do
   """
   alias __MODULE__
 
-  defstruct line: 0, col: 0
-
-  @type t :: %Sublocator{line: integer, col: integer}
+  @type t :: %{line: integer, col: integer}
   @type pattern :: binary | Regex.t()
   @type at_most :: :all | integer
 
   @spec new(integer, integer) :: t
   def new(line, col) when is_integer(line) and is_integer(col) do
-    %Sublocator{line: line, col: col}
+    %{line: line, col: col}
   end
 
   @spec locate(binary, pattern, keyword) :: {atom, list(t) | binary}
@@ -61,7 +59,7 @@ defmodule Sublocator do
   @spec locate_inline({binary, integer}, pattern, t) :: list(t)
   defp locate_inline(line_tup, patt, start)
 
-  defp locate_inline({line_str, line}, %Regex{} = patt, %Sublocator{line: sl, col: sc})
+  defp locate_inline({line_str, line}, %Regex{} = patt, %{line: sl, col: sc})
        when line >= sl do
     start_col = if line == sl, do: sc, else: 0
 
@@ -74,7 +72,7 @@ defmodule Sublocator do
     |> report_locs(line, start_col)
   end
 
-  defp locate_inline({line_str, line}, patt, %Sublocator{line: sl, col: sc})
+  defp locate_inline({line_str, line}, patt, %{line: sl, col: sc})
        when is_binary(patt) and line >= sl do
     start_col = if line == sl, do: sc, else: 0
 
