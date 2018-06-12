@@ -3,7 +3,11 @@ defmodule SublocatorTest do
   doctest Sublocator
 
   setup_all do
-    %{test_file: File.read("test/ActsExe102_body02_chapter01.xhtml")}
+    %{test_file: File.read("test/PrideAndPrejudice.html")}
+  end
+
+  test "creates a new location map" do
+    assert Sublocator.new_loc(2, 4) === %{line: 2, col: 4}
   end
 
   test "accepts only a string as primary parameter" do
@@ -26,7 +30,7 @@ defmodule SublocatorTest do
     {:ok, html} = context.test_file
     {:ok, actual} = Sublocator.locate(html, "<h2", at_most: 1)
 
-    assert actual === [%{line: 13, col: 7}]
+    assert actual === [%{line: 22, col: 1}]
   end
 
   test "locates all substring occurrences", context do
@@ -35,31 +39,84 @@ defmodule SublocatorTest do
 
     assert actual ===
              [
-               %{line: 13, col: 7},
-               %{line: 18, col: 7},
-               %{line: 26, col: 7},
-               %{line: 73, col: 7},
-               %{line: 121, col: 7},
-               %{line: 142, col: 7},
-               %{line: 163, col: 7},
-               %{line: 185, col: 7},
-               %{line: 200, col: 7}
+               %{line: 22, col: 1},
+               %{line: 101, col: 1},
+               %{line: 141, col: 1},
+               %{line: 174, col: 1},
+               %{line: 200, col: 1},
+               %{line: 222, col: 1},
+               %{line: 251, col: 1},
+               %{line: 327, col: 1},
+               %{line: 381, col: 1},
+               %{line: 446, col: 1},
+               %{line: 491, col: 1},
+               %{line: 579, col: 1},
+               %{line: 619, col: 1},
+               %{line: 682, col: 1},
+               %{line: 712, col: 1},
+               %{line: 769, col: 1},
+               %{line: 828, col: 1},
+               %{line: 894, col: 1},
+               %{line: 938, col: 1},
+               %{line: 1014, col: 1},
+               %{line: 1095, col: 1},
+               %{line: 1127, col: 1},
+               %{line: 1179, col: 1},
+               %{line: 1250, col: 1},
+               %{line: 1285, col: 1},
+               %{line: 1327, col: 1},
+               %{line: 1367, col: 1},
+               %{line: 1380, col: 1},
+               %{line: 1417, col: 1},
+               %{line: 1440, col: 1},
+               %{line: 1459, col: 1},
+               %{line: 1539, col: 1},
+               %{line: 1560, col: 1},
+               %{line: 1638, col: 1},
+               %{line: 1681, col: 1},
+               %{line: 1717, col: 1},
+               %{line: 1754, col: 1},
+               %{line: 1778, col: 1},
+               %{line: 1809, col: 1},
+               %{line: 1862, col: 1},
+               %{line: 1888, col: 1},
+               %{line: 1923, col: 1},
+               %{line: 1952, col: 1},
+               %{line: 1978, col: 1},
+               %{line: 2042, col: 1},
+               %{line: 2060, col: 1},
+               %{line: 2096, col: 1},
+               %{line: 2133, col: 1},
+               %{line: 2180, col: 1},
+               %{line: 2233, col: 1},
+               %{line: 2252, col: 1},
+               %{line: 2271, col: 1},
+               %{line: 2297, col: 1},
+               %{line: 2320, col: 1},
+               %{line: 2368, col: 1},
+               %{line: 2409, col: 1},
+               %{line: 2456, col: 1},
+               %{line: 2479, col: 1},
+               %{line: 2578, col: 1},
+               %{line: 2602, col: 1},
+               %{line: 2628, col: 1},
+               %{line: 2663, col: 1}
              ]
   end
 
   test "locates a given number of substring occurrences after a point", context do
     {:ok, html} = context.test_file
 
-    {:ok, actual} = Sublocator.locate(html, "<h2", at_most: 1, start: %{line: 121, col: 8})
+    {:ok, actual} = Sublocator.locate(html, "<h2", at_most: 1, start: %{line: 2180, col: 2})
 
-    assert actual === [%{line: 142, col: 7}]
+    assert actual === [%{line: 2233, col: 1}]
   end
 
   test "locates many substring occurrences", context do
     {:ok, html} = context.test_file
-    {:ok, actual} = Sublocator.locate(html, "epub:type")
+    {:ok, actual} = Sublocator.locate(html, "the")
 
-    assert Enum.count(actual) === 449
+    assert Enum.count(actual) === 7449
   end
 
   test "locates a more particular substring", context do
@@ -68,17 +125,17 @@ defmodule SublocatorTest do
     {:ok, actual} =
       Sublocator.locate(
         html,
-        "see Brown, <span class=\"italic\">Communication</span>, 35n16, 46–47.</span>"
+        "It needed all Jane's steady mildness to bear these attacks with tolerable tranquillity."
       )
 
-    assert actual === [%{line: 582, col: 687}]
+    assert actual === [%{line: 1792, col: 484}]
   end
 
   test "locates a list of substrings", context do
     {:ok, html} = context.test_file
-    {:ok, actual} = Sublocator.locate(html, ["epub:type", "<h2"])
+    {:ok, actual} = Sublocator.locate(html, ["class=", "<h2"])
 
-    assert Enum.count(actual) === 458
+    assert Enum.count(actual) === 186 + 62
   end
 
   test "locates with simple regex pattern" do
@@ -88,90 +145,31 @@ defmodule SublocatorTest do
 
   test "locates all regex matches", context do
     {:ok, html} = context.test_file
+    {:ok, actual} = Sublocator.locate(html, ~r{<i>.*?</i>})
 
-    {:ok, actual} =
-      Sublocator.locate(
-        html,
-        ~r{<span epub:type="pagebreak" id="page\d+" title="\d+"></span>},
-        at_most: :all
-      )
-
-    assert actual ===
-             [
-               %{line: 9, col: 34},
-               %{line: 20, col: 167},
-               %{line: 23, col: 425},
-               %{line: 31, col: 182},
-               %{line: 35, col: 7},
-               %{line: 40, col: 603},
-               %{line: 43, col: 1073},
-               %{line: 45, col: 1289},
-               %{line: 48, col: 10},
-               %{line: 51, col: 1735},
-               %{line: 55, col: 7},
-               %{line: 60, col: 628},
-               %{line: 66, col: 339},
-               %{line: 69, col: 1348},
-               %{line: 75, col: 10},
-               %{line: 78, col: 682},
-               %{line: 84, col: 10},
-               %{line: 86, col: 174},
-               %{line: 90, col: 603},
-               %{line: 96, col: 10},
-               %{line: 102, col: 10},
-               %{line: 108, col: 10},
-               %{line: 112, col: 348},
-               %{line: 118, col: 686},
-               %{line: 122, col: 481},
-               %{line: 128, col: 10},
-               %{line: 133, col: 936},
-               %{line: 140, col: 170},
-               %{line: 147, col: 629},
-               %{line: 150, col: 7},
-               %{line: 156, col: 10},
-               %{line: 161, col: 7},
-               %{line: 169, col: 639},
-               %{line: 175, col: 301},
-               %{line: 178, col: 7},
-               %{line: 186, col: 178},
-               %{line: 190, col: 489},
-               %{line: 196, col: 311},
-               %{line: 201, col: 341},
-               %{line: 813, col: 7}
-             ]
+    assert Enum.count(actual) === 404
   end
 
   test "locates regex matches after a given start point", context do
     {:ok, html} = context.test_file
 
     {:ok, actual} =
-      Sublocator.locate(
-        html,
-        ~r{<span epub:type="pagebreak" id="page\d+" title="\d+"></span>},
-        at_most: :all,
-        start: %{line: 175, col: 302}
-      )
+      Sublocator.locate(html, ~r{<i>[^<]+</i>}, at_most: 6, start: %{line: 1440, col: 200})
 
     assert actual === [
-             %{line: 178, col: 7},
-             %{line: 186, col: 178},
-             %{line: 190, col: 489},
-             %{line: 196, col: 311},
-             %{line: 201, col: 341},
-             %{line: 813, col: 7}
+             %{line: 1443, col: 187},
+             %{line: 1443, col: 634},
+             %{line: 1443, col: 743},
+             %{line: 1443, col: 781},
+             %{line: 1462, col: 1122},
+             %{line: 1472, col: 29}
            ]
   end
 
   test "locates a number of regex matches", context do
     {:ok, html} = context.test_file
+    {:ok, actual} = Sublocator.locate(html, ~r{id="pgepubid\d+"}, at_most: 2)
 
-    {:ok, actual} =
-      Sublocator.locate(
-        html,
-        ~r{<sup class="fn" id="note-backlink-[^"]+">},
-        at_most: 2
-      )
-
-    assert actual === [%{line: 19, col: 488}, %{line: 20, col: 277}]
+    assert actual === [%{line: 20, col: 5}, %{line: 101, col: 5}]
   end
 end

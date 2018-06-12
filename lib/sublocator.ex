@@ -1,22 +1,33 @@
 defmodule Sublocator do
   @moduledoc """
-  Documentation for Sublocator.
+  An Elixir library for identifying the location(s) of a pattern in a given string.
+
+  Using `Sublocator.locate/3`, the pattern can be a string, a list of strings, or
+  a regular expression, and the result is a list of simple line and column data or
+  an empty list.
   """
   alias __MODULE__
 
   @col_offset 1
 
-  @type t :: %{line: integer, col: integer}
-  @type pattern :: binary | list(binary) | Regex.t()
-  @type at_most :: :all | integer
+  @typep t :: %{line: integer, col: integer}
+  @typep pattern :: binary | list(binary) | Regex.t()
+  @typep at_most :: :all | integer
 
-  @spec new(integer, integer) :: t
-  def new(line, col) when is_integer(line) and is_integer(col) do
+  @doc """
+  Creates a simple location map from line and column integers.
+
+  ## Example
+      iex> Sublocator.new_loc(42, 12)
+      %{line: 42, col: 12}
+  """
+  @spec new_loc(integer, integer) :: t
+  def new_loc(line, col) when is_integer(line) and is_integer(col) do
     %{line: line, col: col}
   end
 
   @doc ~S"""
-  Finds line and coloumn location(s) of a pattern in a given string.
+  Finds line and column location(s) of a pattern in a given string.
 
   Returns a list of these locations or an empty list if not found.
   The pattern can be a string, a list of strings, or a regular
@@ -44,11 +55,13 @@ defmodule Sublocator do
   ## Examples
   Locating with a string:
       iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a")
-      {:ok, [%{line: 2, col: 6}, %{line: 2, col: 10}, %{line: 2, col: 15}]}
+      {:ok, [%{line: 2, col: 6}, %{line: 2, col: 11}, %{line: 2, col: 16}]}
+
       iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a", at_most: 1)
       {:ok, [%{line: 2, col: 6}]}
+
       iex> Sublocator.locate("<h2>\n  <span class=\"a\"", "a", [start: %{line: 2, col: 10}])
-      {:ok, [%{line: 2, col: 10}, %{line: 2, col: 15}]}
+      {:ok, [%{line: 2, col: 11}, %{line: 2, col: 16}]}
 
   A list of strings:
       iex> Sublocator.locate("<h2>\n  <span class=\"a\"", ["h", "l"])
@@ -62,29 +75,44 @@ defmodule Sublocator do
   def locate(string, pattern, opts \\ [])
 
   def locate(string, pattern, opts) when is_binary(string) and is_list(pattern) do
-    joined = Enum.map(pattern, &Regex.escape(&1)) |> Enum.join("|")
+    joined =
+      pattern
+      |> Enum.map(&Regex.escape(&1))
+      |> Enum.join("|")
+
     regexp = Regex.compile!("(?:#{joined})")
     locate(string, regexp, opts)
   end
 
   def locate(string, pattern, opts) when is_binary(string) do
     at_most = Keyword.get(opts, :at_most, :all)
-    start_loc = Keyword.get(opts, :start, new(0, 0))
+    start_loc = Keyword.get(opts, :start, new_loc(0, 0))
 
-    stream_lines(string)
+    string
+    |> stream_lines()
     |> do_locate(pattern, at_most, start_loc)
   end
 
   def locate(_string, _pattern, _opts), do: {:error, "intended only for a string"}
 
+  @spec stream_lines(binary) :: Enumerable.t({binary, integer})
+  defp stream_lines(string) do
+    ~r{(?:\r\n|\n|\r)}
+    |> Regex.split(string)
+    |> Stream.with_index(@col_offset)
+  end
+
+  @spec stream_locations(Enumerable.t(binary), pattern, t) :: Enumerable.t(t)
   defp stream_locations(lines, pattern, start) do
     lines
     |> Stream.flat_map(&locate_inline(&1, pattern, start))
   end
 
+  @spec do_locate(Enumerable.t(), pattern, at_most, t) :: {atom, list(t) | binary}
   defp do_locate(lines, pattern, :all, start) do
     locs =
-      stream_locations(lines, pattern, start)
+      lines
+      |> stream_locations(pattern, start)
       |> Enum.to_list()
 
     {:ok, locs}
@@ -96,15 +124,18 @@ defmodule Sublocator do
 
   defp do_locate(lines, pattern, cnt, start) when is_integer(cnt) do
     locs =
-      stream_locations(lines, pattern, start)
+      lines
+      |> stream_locations(pattern, start)
       |> Enum.take(cnt)
 
     {:ok, locs}
   end
 
-  defp stream_lines(string) do
-    Regex.split(~r{(?:\r\n|\n|\r)}, string)
-    |> Stream.with_index(@col_offset)
+  @spec do_regex_split(Regex.t(), binary) :: {list(binary), list(binary)}
+  defp do_regex_split(patt, line_str) do
+    patt
+    |> Regex.split(line_str, include_captures: true)
+    |> Enum.split_with(&Regex.match?(patt, &1))
   end
 
   @spec locate_inline({binary, integer}, pattern, t) :: list(t)
@@ -113,10 +144,7 @@ defmodule Sublocator do
   defp locate_inline({line_str, line}, %Regex{} = patt, %{line: sl, col: sc})
        when line >= sl do
     start_col = if line == sl, do: sc, else: 0
-
-    {matches, non_matches} =
-      Regex.split(patt, line_str, include_captures: true)
-      |> Enum.split_with(&Regex.match?(patt, &1))
+    {matches, non_matches} = do_regex_split(patt, line_str)
 
     non_matches
     |> do_inline(matches)
@@ -127,19 +155,15 @@ defmodule Sublocator do
        when is_binary(patt) and line >= sl do
     start_col = if line == sl, do: sc, else: 0
 
-    String.split(line_str, patt)
+    line_str
+    |> String.split(patt)
     |> do_inline(String.length(patt))
     |> report_locs(line, start_col)
   end
 
   defp locate_inline(_line_tup, _patt, _start), do: []
 
-  defp report_locs(hits, line, start_col) do
-    hits
-    |> Enum.filter(&(&1 >= start_col))
-    |> Enum.map(&new(line, &1))
-  end
-
+  @spec do_inline(list(binary), integer | list(binary)) :: list(integer)
   defp do_inline([h, nh | tail], patt_len) when is_integer(patt_len) do
     col = String.length(h) + @col_offset
     [col] ++ do_inline([nh | tail], patt_len, col)
@@ -152,16 +176,23 @@ defmodule Sublocator do
 
   defp do_inline([_], _patt_len), do: []
 
+  @spec do_inline(list(binary), integer | list(binary), integer) :: list(integer)
   defp do_inline([h, nh | tail], patt_len, at_len) when is_integer(patt_len) do
-    col = String.length(h) + at_len
-    [col] ++ do_inline([nh | tail], patt_len, patt_len + col)
+    col = String.length(h) + patt_len + at_len
+    [col] ++ do_inline([nh | tail], patt_len, col)
   end
 
   defp do_inline([h, nh | tail], [first | rest], at_len) do
-    col = String.length(h) + at_len
-    match_len = String.length(first)
-    [col] ++ do_inline([nh | tail], rest, match_len + col)
+    col = String.length(h) + String.length(first) + at_len
+    [col] ++ do_inline([nh | tail], rest, col)
   end
 
   defp do_inline([_], _patt_len, _at_len), do: []
+
+  @spec report_locs(list(integer), integer, integer) :: list(t)
+  defp report_locs(hits, line, start_col) do
+    hits
+    |> Enum.filter(&(&1 >= start_col))
+    |> Enum.map(&new_loc(line, &1))
+  end
 end

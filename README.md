@@ -1,21 +1,19 @@
 # Sublocator
 
-**TODO: Add description**
+[![Build Status](https://travis-ci.org/westonlit/sublocator.svg)](https://travis-ci.org/westonlit/sublocator) [![Coverage Status](https://coveralls.io/repos/github/westonlit/sublocator/badge.svg?branch=master)](https://coveralls.io/github/westonlit/sublocator?branch=master) [![hex.pm version](https://img.shields.io/hexpm/v/sublocator.svg)](https://hex.pm/packages/sublocator)
+
+An Elixir library for identifying line and column location(s) of a
+pattern in a given string. The pattern can be a string, a list of
+strings, or a regular expression.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `sublocator` to your list of dependencies in `mix.exs`:
-
 ```elixir
 def deps do
-  [
-    {:sublocator, "~> 0.1.0"}
-  ]
+  [{:sublocator, "~> 0.1.0"}]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/sublocator](https://hexdocs.pm/sublocator).
+## Usage
 
+Docs can be found at [https://hexdocs.pm/sublocator](https://hexdocs.pm/sublocator).

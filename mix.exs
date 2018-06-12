@@ -6,24 +6,21 @@ defmodule Sublocator.MixProject do
       app: :sublocator,
       version: "0.1.0",
       elixir: "~> 1.6",
-      elixirc_paths: ["./", "lib"],
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
       deps: deps(),
+      name: "Sublocator",
+      source_url: "https://github.com/westonlit/sublocator",
+      docs: [
+        main: "Sublocator"
+      ],
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test
-      ],
-      name: "nameparts",
-      source_url: "https://github.com/bhdirect-ebooks/sublocator",
-      docs: [
-        extras: ["README.md"],
-        main: "readme",
-        filter_prefix: "Sublocator"
       ]
     ]
   end
@@ -39,20 +36,20 @@ defmodule Sublocator.MixProject do
   defp deps do
     [
       {:excoveralls, "~> 0.9", only: :test},
-      {:ex_doc, "~> 0.18", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.18", only: [:dev, :test], runtime: false}
     ]
   end
 
   defp description do
-    "Returns a list of line and column location(s) of a substring or Regex pattern in a given string."
+    "Identify line and column location(s) of a pattern in a given string."
   end
 
   defp package do
     [
       name: "sublocator",
       maintainers: ["Weston Littrell"],
-      licenses: ["FreeBSD"],
-      links: %{"GitHub" => "https://github.com/bhdirect-ebooks/sublocator"}
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/westonlit/sublocator"}
     ]
   end
 end
