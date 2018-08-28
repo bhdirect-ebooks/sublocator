@@ -14,9 +14,19 @@ defmodule SublocatorTest do
     assert Sublocator.locate(:html, "h", at_most: 0) === {:error, "intended only for a string"}
   end
 
-  test "returns error for bad :at_most value" do
+  test "returns error for 0 :at_most value" do
     assert Sublocator.locate("html", "h", at_most: 0) ===
              {:error, ":at_most value must be greater than 0 or :all"}
+  end
+
+  test "returns error for bad :at_most value" do
+    assert Sublocator.locate("html", "h", at_most: "something") ===
+             {:error, ":at_most value must be an integer or :all"}
+  end
+
+  test "returns error for bad :start value" do
+    assert Sublocator.locate("html", "h", start: "something") ===
+             {:error, ":start value must be %{line: integer, col: integer}"}
   end
 
   test "returns empty list for no occurrence", context do

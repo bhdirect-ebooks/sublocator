@@ -5,7 +5,7 @@ defmodule Sublocator.MixProject do
     [
       app: :sublocator,
       version: "0.1.0",
-      elixir: "~> 1.6",
+      elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
@@ -35,8 +35,8 @@ defmodule Sublocator.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:excoveralls, "~> 0.9", only: :test},
-      {:ex_doc, "~> 0.18", only: [:dev, :test], runtime: false}
+      {:excoveralls, "~> 0.10", only: :test},
+      {:ex_doc, "~> 0.19", only: [:dev, :test], runtime: false}
     ]
   end
 

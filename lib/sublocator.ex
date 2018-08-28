@@ -14,6 +14,8 @@ defmodule Sublocator do
   @typep pattern :: binary | list(binary) | Regex.t()
   @typep at_most :: :all | integer
 
+  defguardp is_loc(line, col) when is_integer(line) and is_integer(col)
+
   @doc """
   Creates a simple location map from line and column integers.
 
@@ -22,7 +24,7 @@ defmodule Sublocator do
       %{line: 42, col: 12}
   """
   @spec new_loc(integer, integer) :: t
-  def new_loc(line, col) when is_integer(line) and is_integer(col) do
+  def new_loc(line, col) when is_loc(line, col) do
     %{line: line, col: col}
   end
 
@@ -109,7 +111,7 @@ defmodule Sublocator do
   end
 
   @spec do_locate(Enumerable.t(), pattern, at_most, t) :: {atom, list(t) | binary}
-  defp do_locate(lines, pattern, :all, start) do
+  defp do_locate(lines, pattern, :all, %{line: line, col: col} = start) when is_loc(line, col) do
     locs =
       lines
       |> stream_locations(pattern, start)
@@ -122,13 +124,22 @@ defmodule Sublocator do
     {:error, ":at_most value must be greater than 0 or :all"}
   end
 
-  defp do_locate(lines, pattern, cnt, start) when is_integer(cnt) do
+  defp do_locate(lines, pattern, cnt, %{line: line, col: col} = start)
+       when is_integer(cnt) and is_loc(line, col) do
     locs =
       lines
       |> stream_locations(pattern, start)
       |> Enum.take(cnt)
 
     {:ok, locs}
+  end
+
+  defp do_locate(_lines, _pattern, cnt, _start) when not is_integer(cnt) and cnt != :all do
+    {:error, ":at_most value must be an integer or :all"}
+  end
+
+  defp do_locate(_lines, _pattern, _cnt, _start) do
+    {:error, ":start value must be %{line: integer, col: integer}"}
   end
 
   @spec do_regex_split(Regex.t(), binary) :: {list(binary), list(binary)}
