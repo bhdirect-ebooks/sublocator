@@ -91,11 +91,21 @@ defmodule Sublocator do
     start_loc = Keyword.get(opts, :start, new_loc(0, 0))
 
     string
-    |> stream_lines()
+    |> String.split(pattern, include_captures: true)
+    |> intersperse(pattern)
     |> do_locate(pattern, at_most, start_loc)
   end
 
   def locate(_string, _pattern, _opts), do: {:error, "intended only for a string"}
+
+  @spec intersperse(Enumerable.t(binary), pattern) :: Enumerable.t(binary)
+  defp intersperse(split_result, pattern)
+
+  defp intersperse(split_result, pattern) when is_binary(pattern) do
+    Enum.intersperse(split_result, pattern)
+  end
+
+  defp intersperse(split_result, _pattern), do: split_result
 
   @spec stream_lines(binary) :: Enumerable.t({binary, integer})
   defp stream_lines(string) do
@@ -110,35 +120,43 @@ defmodule Sublocator do
     |> Stream.flat_map(&locate_inline(&1, pattern, start))
   end
 
+  @spec stream_parts(Enumerable.t(binary), pattern, t) :: Enumerable.t(t)
+  defp stream_parts(parts, pattern, start) do
+    parts
+    |> Stream.flat_map(&report_locs(&1, pattern, start))
+  end
+
   @spec do_locate(Enumerable.t(), pattern, at_most, t) :: {atom, list(t) | binary}
-  defp do_locate(lines, pattern, :all, %{line: line, col: col} = start) when is_loc(line, col) do
+  defp do_locate(parts, pattern, cnt, start)
+
+  defp do_locate(parts, pattern, :all, %{line: line, col: col} = start) when is_loc(line, col) do
     locs =
-      lines
-      |> stream_locations(pattern, start)
+      parts
+      |> stream_parts(pattern, start)
       |> Enum.to_list()
 
     {:ok, locs}
   end
 
-  defp do_locate(_lines, _pattern, cnt, _start) when is_integer(cnt) and cnt <= 0 do
+  defp do_locate(_parts, _pattern, cnt, _start) when is_integer(cnt) and cnt <= 0 do
     {:error, ":at_most value must be greater than 0 or :all"}
   end
 
-  defp do_locate(lines, pattern, cnt, %{line: line, col: col} = start)
+  defp do_locate(parts, pattern, cnt, %{line: line, col: col} = start)
        when is_integer(cnt) and is_loc(line, col) do
     locs =
-      lines
-      |> stream_locations(pattern, start)
+      parts
+      |> stream_parts(pattern, start)
       |> Enum.take(cnt)
 
     {:ok, locs}
   end
 
-  defp do_locate(_lines, _pattern, cnt, _start) when not is_integer(cnt) and cnt != :all do
+  defp do_locate(_parts, _pattern, cnt, _start) when not is_integer(cnt) and cnt != :all do
     {:error, ":at_most value must be an integer or :all"}
   end
 
-  defp do_locate(_lines, _pattern, _cnt, _start) do
+  defp do_locate(_parts, _pattern, _cnt, _start) do
     {:error, ":start value must be %{line: integer, col: integer}"}
   end
 
