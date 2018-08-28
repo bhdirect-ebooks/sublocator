@@ -92,39 +92,38 @@ defmodule Sublocator do
 
     string
     |> String.split(pattern, include_captures: true)
-    |> intersperse(pattern)
+    |> tuplify(pattern)
     |> do_locate(pattern, at_most, start_loc)
   end
 
   def locate(_string, _pattern, _opts), do: {:error, "intended only for a string"}
 
-  @spec intersperse(Enumerable.t(binary), pattern) :: Enumerable.t(binary)
-  defp intersperse(split_result, pattern)
+  @spec tuplify(Enumerable.t(binary), pattern) :: Enumerable.t()
+  defp tuplify(split_result, pattern)
 
-  defp intersperse(split_result, pattern) when is_binary(pattern) do
+  defp tuplify(split_result, pattern) when is_binary(pattern) do
     Enum.intersperse(split_result, pattern)
+    |> Enum.chunk_every(2, 2, :discard)
+    |> Enum.map(&List.to_tuple/1)
   end
 
-  defp intersperse(split_result, _pattern), do: split_result
+  defp tuplify(split_result, _pattern) do
+    Enum.chunk_every(split_result, 2, 2, :discard)
+    |> Enum.map(&List.to_tuple/1)
+  end
 
   @spec stream_lines(binary) :: Enumerable.t({binary, integer})
-  defp stream_lines(string) do
+  def stream_lines(string) do
     ~r{(?:\r\n|\n|\r)}
     |> Regex.split(string)
     |> Stream.with_index(@col_offset)
   end
 
-  @spec stream_locations(Enumerable.t(binary), pattern, t) :: Enumerable.t(t)
-  defp stream_locations(lines, pattern, start) do
-    lines
-    |> Stream.flat_map(&locate_inline(&1, pattern, start))
-  end
-
-  @spec stream_parts(Enumerable.t(binary), pattern, t) :: Enumerable.t(t)
-  defp stream_parts(parts, pattern, start) do
-    parts
-    |> Stream.flat_map(&report_locs(&1, pattern, start))
-  end
+  # @spec stream_locations(Enumerable.t(binary), pattern, t) :: Enumerable.t(t)
+  # defp stream_locations(lines, pattern, start) do
+  #   lines
+  #   |> Stream.flat_map(&locate_inline(&1, pattern, start))
+  # end
 
   @spec do_locate(Enumerable.t(), pattern, at_most, t) :: {atom, list(t) | binary}
   defp do_locate(parts, pattern, cnt, start)
@@ -132,7 +131,7 @@ defmodule Sublocator do
   defp do_locate(parts, pattern, :all, %{line: line, col: col} = start) when is_loc(line, col) do
     locs =
       parts
-      |> stream_parts(pattern, start)
+      |> stream_parts(start)
       |> Enum.to_list()
 
     {:ok, locs}
@@ -146,7 +145,7 @@ defmodule Sublocator do
        when is_integer(cnt) and is_loc(line, col) do
     locs =
       parts
-      |> stream_parts(pattern, start)
+      |> stream_parts(start)
       |> Enum.take(cnt)
 
     {:ok, locs}
@@ -160,68 +159,87 @@ defmodule Sublocator do
     {:error, ":start value must be %{line: integer, col: integer}"}
   end
 
-  @spec do_regex_split(Regex.t(), binary) :: {list(binary), list(binary)}
-  defp do_regex_split(patt, line_str) do
-    patt
-    |> Regex.split(line_str, include_captures: true)
-    |> Enum.split_with(&Regex.match?(patt, &1))
+  # @spec do_regex_split(Regex.t(), binary) :: {list(binary), list(binary)}
+  # defp do_regex_split(patt, line_str) do
+  #   patt
+  #   |> Regex.split(line_str, include_captures: true)
+  #   |> Enum.split_with(&Regex.match?(patt, &1))
+  # end
+
+  # @spec locate_inline({binary, integer}, pattern, t) :: list(t)
+  # defp locate_inline(line_tup, patt, start)
+
+  # defp locate_inline({line_str, line}, %Regex{} = patt, %{line: sl, col: sc})
+  #      when line >= sl do
+  #   start_col = if line == sl, do: sc, else: 0
+  #   {matches, non_matches} = do_regex_split(patt, line_str)
+
+  #   non_matches
+  #   |> do_inline(matches)
+  #   |> report_locs(line, start_col)
+  # end
+
+  # defp locate_inline({line_str, line}, patt, %{line: sl, col: sc})
+  #      when is_binary(patt) and line >= sl do
+  #   start_col = if line == sl, do: sc, else: 0
+
+  #   line_str
+  #   |> String.split(patt)
+  #   |> do_inline(String.length(patt))
+  #   |> report_locs(line, start_col)
+  # end
+
+  # defp locate_inline(_line_tup, _patt, _start), do: []
+
+  # @spec do_inline(list(binary), integer | list(binary)) :: list(integer)
+  # defp do_inline([h, nh | tail], patt_len) when is_integer(patt_len) do
+  #   col = String.length(h) + @col_offset
+  #   [col] ++ do_inline([nh | tail], patt_len, col)
+  # end
+
+  # defp do_inline([h, nh | tail], matches) do
+  #   col = String.length(h) + @col_offset
+  #   [col] ++ do_inline([nh | tail], matches, col)
+  # end
+
+  # defp do_inline([_], _patt_len), do: []
+
+  # @spec do_inline(list(binary), integer | list(binary), integer) :: list(integer)
+  # defp do_inline([h, nh | tail], patt_len, at_len) when is_integer(patt_len) do
+  #   col = String.length(h) + patt_len + at_len
+  #   [col] ++ do_inline([nh | tail], patt_len, col)
+  # end
+
+  # defp do_inline([h, nh | tail], [first | rest], at_len) do
+  #   col = String.length(h) + String.length(first) + at_len
+  #   [col] ++ do_inline([nh | tail], rest, col)
+  # end
+
+  # defp do_inline([_], _patt_len, _at_len), do: []
+
+  # @spec report_locs(list(integer), integer, integer) :: list(t)
+  # defp report_locs(hits, line, start_col) do
+  #   hits
+  #   |> Enum.filter(&(&1 >= start_col))
+  #   |> Enum.map(&new_loc(line, &1))
+  # end
+
+  @spec report_locs(Enumerable.t(binary), t) :: Enumerable.t(t)
+  defp report_locs(parts, start) do
+    acc = %{before: new_loc(0, 0), after: new_loc(0, 0)}
+
+    parts
+    |> Stream.scan(acc, &report_loc(&1, &2, start))
   end
 
-  @spec locate_inline({binary, integer}, pattern, t) :: list(t)
-  defp locate_inline(line_tup, patt, start)
-
-  defp locate_inline({line_str, line}, %Regex{} = patt, %{line: sl, col: sc})
-       when line >= sl do
-    start_col = if line == sl, do: sc, else: 0
-    {matches, non_matches} = do_regex_split(patt, line_str)
-
-    non_matches
-    |> do_inline(matches)
-    |> report_locs(line, start_col)
+  defp report_loc(acc, {before, match}, start) do
+    {str, line} = last_line_info(before)
+    loc = new_loc()
   end
 
-  defp locate_inline({line_str, line}, patt, %{line: sl, col: sc})
-       when is_binary(patt) and line >= sl do
-    start_col = if line == sl, do: sc, else: 0
-
-    line_str
-    |> String.split(patt)
-    |> do_inline(String.length(patt))
-    |> report_locs(line, start_col)
-  end
-
-  defp locate_inline(_line_tup, _patt, _start), do: []
-
-  @spec do_inline(list(binary), integer | list(binary)) :: list(integer)
-  defp do_inline([h, nh | tail], patt_len) when is_integer(patt_len) do
-    col = String.length(h) + @col_offset
-    [col] ++ do_inline([nh | tail], patt_len, col)
-  end
-
-  defp do_inline([h, nh | tail], matches) do
-    col = String.length(h) + @col_offset
-    [col] ++ do_inline([nh | tail], matches, col)
-  end
-
-  defp do_inline([_], _patt_len), do: []
-
-  @spec do_inline(list(binary), integer | list(binary), integer) :: list(integer)
-  defp do_inline([h, nh | tail], patt_len, at_len) when is_integer(patt_len) do
-    col = String.length(h) + patt_len + at_len
-    [col] ++ do_inline([nh | tail], patt_len, col)
-  end
-
-  defp do_inline([h, nh | tail], [first | rest], at_len) do
-    col = String.length(h) + String.length(first) + at_len
-    [col] ++ do_inline([nh | tail], rest, col)
-  end
-
-  defp do_inline([_], _patt_len, _at_len), do: []
-
-  @spec report_locs(list(integer), integer, integer) :: list(t)
-  defp report_locs(hits, line, start_col) do
-    hits
-    |> Enum.filter(&(&1 >= start_col))
-    |> Enum.map(&new_loc(line, &1))
+  defp last_line_info(str) do
+    stream_lines(str)
+    |> Enum.drop(1)
+    |> Enum.at(0)
   end
 end
