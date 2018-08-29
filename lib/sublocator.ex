@@ -93,7 +93,7 @@ defmodule Sublocator do
     string
     |> String.split(pattern, include_captures: true)
     |> tuplify(pattern)
-    |> do_locate(pattern, at_most, start_loc)
+    |> do_locate(at_most, start_loc)
   end
 
   def locate(_string, _pattern, _opts), do: {:error, "intended only for a string"}
@@ -119,127 +119,85 @@ defmodule Sublocator do
     |> Stream.with_index(@col_offset)
   end
 
-  # @spec stream_locations(Enumerable.t(binary), pattern, t) :: Enumerable.t(t)
-  # defp stream_locations(lines, pattern, start) do
-  #   lines
-  #   |> Stream.flat_map(&locate_inline(&1, pattern, start))
-  # end
+  @spec do_locate(Enumerable.t(), at_most, t) :: {atom, list(t) | binary}
+  defp do_locate(parts, cnt, start)
 
-  @spec do_locate(Enumerable.t(), pattern, at_most, t) :: {atom, list(t) | binary}
-  defp do_locate(parts, pattern, cnt, start)
-
-  defp do_locate(parts, pattern, :all, %{line: line, col: col} = start) when is_loc(line, col) do
+  defp do_locate(parts, :all, %{line: line, col: col} = start) when is_loc(line, col) do
     locs =
       parts
-      |> stream_parts(start)
+      |> report_locs(start)
       |> Enum.to_list()
 
     {:ok, locs}
   end
 
-  defp do_locate(_parts, _pattern, cnt, _start) when is_integer(cnt) and cnt <= 0 do
+  defp do_locate(_parts, cnt, _start) when is_integer(cnt) and cnt <= 0 do
     {:error, ":at_most value must be greater than 0 or :all"}
   end
 
-  defp do_locate(parts, pattern, cnt, %{line: line, col: col} = start)
+  defp do_locate(parts, cnt, %{line: line, col: col} = start)
        when is_integer(cnt) and is_loc(line, col) do
     locs =
       parts
-      |> stream_parts(start)
+      |> report_locs(start)
       |> Enum.take(cnt)
 
     {:ok, locs}
   end
 
-  defp do_locate(_parts, _pattern, cnt, _start) when not is_integer(cnt) and cnt != :all do
+  defp do_locate(_parts, cnt, _start) when not is_integer(cnt) and cnt != :all do
     {:error, ":at_most value must be an integer or :all"}
   end
 
-  defp do_locate(_parts, _pattern, _cnt, _start) do
+  defp do_locate(_parts, _cnt, _start) do
     {:error, ":start value must be %{line: integer, col: integer}"}
   end
 
-  # @spec do_regex_split(Regex.t(), binary) :: {list(binary), list(binary)}
-  # defp do_regex_split(patt, line_str) do
-  #   patt
-  #   |> Regex.split(line_str, include_captures: true)
-  #   |> Enum.split_with(&Regex.match?(patt, &1))
-  # end
-
-  # @spec locate_inline({binary, integer}, pattern, t) :: list(t)
-  # defp locate_inline(line_tup, patt, start)
-
-  # defp locate_inline({line_str, line}, %Regex{} = patt, %{line: sl, col: sc})
-  #      when line >= sl do
-  #   start_col = if line == sl, do: sc, else: 0
-  #   {matches, non_matches} = do_regex_split(patt, line_str)
-
-  #   non_matches
-  #   |> do_inline(matches)
-  #   |> report_locs(line, start_col)
-  # end
-
-  # defp locate_inline({line_str, line}, patt, %{line: sl, col: sc})
-  #      when is_binary(patt) and line >= sl do
-  #   start_col = if line == sl, do: sc, else: 0
-
-  #   line_str
-  #   |> String.split(patt)
-  #   |> do_inline(String.length(patt))
-  #   |> report_locs(line, start_col)
-  # end
-
-  # defp locate_inline(_line_tup, _patt, _start), do: []
-
-  # @spec do_inline(list(binary), integer | list(binary)) :: list(integer)
-  # defp do_inline([h, nh | tail], patt_len) when is_integer(patt_len) do
-  #   col = String.length(h) + @col_offset
-  #   [col] ++ do_inline([nh | tail], patt_len, col)
-  # end
-
-  # defp do_inline([h, nh | tail], matches) do
-  #   col = String.length(h) + @col_offset
-  #   [col] ++ do_inline([nh | tail], matches, col)
-  # end
-
-  # defp do_inline([_], _patt_len), do: []
-
-  # @spec do_inline(list(binary), integer | list(binary), integer) :: list(integer)
-  # defp do_inline([h, nh | tail], patt_len, at_len) when is_integer(patt_len) do
-  #   col = String.length(h) + patt_len + at_len
-  #   [col] ++ do_inline([nh | tail], patt_len, col)
-  # end
-
-  # defp do_inline([h, nh | tail], [first | rest], at_len) do
-  #   col = String.length(h) + String.length(first) + at_len
-  #   [col] ++ do_inline([nh | tail], rest, col)
-  # end
-
-  # defp do_inline([_], _patt_len, _at_len), do: []
-
-  # @spec report_locs(list(integer), integer, integer) :: list(t)
-  # defp report_locs(hits, line, start_col) do
-  #   hits
-  #   |> Enum.filter(&(&1 >= start_col))
-  #   |> Enum.map(&new_loc(line, &1))
-  # end
-
   @spec report_locs(Enumerable.t(binary), t) :: Enumerable.t(t)
   defp report_locs(parts, start) do
-    acc = %{before: new_loc(0, 0), after: new_loc(0, 0)}
+    acc = %{begin_loc: new_loc(0, 0), end_loc: new_loc(1, 1)}
 
     parts
-    |> Stream.scan(acc, &report_loc(&1, &2, start))
+    |> Stream.scan(acc, &report_loc(&2, &1))
+    |> Stream.map(fn x -> x.begin_loc end)
+    |> Stream.filter(fn x ->
+      x.line >= start.line &&
+        if x.line == start.line do
+          x.col >= start.col
+        else
+          true
+        end
+    end)
   end
 
-  defp report_loc(acc, {before, match}, start) do
-    {str, line} = last_line_info(before)
-    loc = new_loc()
+  @spec report_loc(%{begin_loc: t, end_loc: t}, {binary, binary}) :: %{begin_loc: t, end_loc: t}
+  defp report_loc(acc, {before, match}) do
+    %{line: blines, col: bcol} = get_partial_loc(before)
+    %{line: mlines, col: mcol} = get_partial_loc(match)
+    line = blines - 1 + acc.end_loc.line
+    col = if line == acc.end_loc.line, do: bcol + acc.end_loc.col - 1, else: bcol
+    begin_loc = new_loc(line, col)
+
+    end_line = line + mlines - 1
+    end_col = if end_line == line, do: col + mcol, else: mcol
+    end_loc = new_loc(end_line, end_col - 1)
+    %{begin_loc: begin_loc, end_loc: end_loc}
   end
 
-  defp last_line_info(str) do
+  defp get_partial_loc(str) do
     stream_lines(str)
-    |> Enum.drop(1)
+    |> safe_drop(1)
     |> Enum.at(0)
+    |> line_info_to_loc()
+  end
+
+  defp safe_drop(list, cnt) do
+    dropped = Enum.drop(list, cnt)
+    if dropped == [], do: list, else: dropped
+  end
+
+  defp line_info_to_loc(tup) do
+    {str, line} = tup
+    new_loc(line, String.length(str) + 1)
   end
 end
