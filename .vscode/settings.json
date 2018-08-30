@@ -1,0 +1,15 @@
+{
+  "html.format.enable": false,
+  "devskim.ignoreFilesList": [
+    "out/*",
+    "bin/*",
+    "node_modules/*",
+    ".vscode/*",
+    "logs/*",
+    "*.log",
+    "*.git",
+    "*.lock",
+    "*-lock.json",
+    ".html"
+  ]
+}

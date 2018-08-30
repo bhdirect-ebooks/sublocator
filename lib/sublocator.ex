@@ -113,10 +113,10 @@ defmodule Sublocator do
   end
 
   @spec stream_lines(binary) :: Enumerable.t({binary, integer})
-  def stream_lines(string) do
+  defp stream_lines(string) do
     ~r{(?:\r\n|\n|\r)}
     |> Regex.split(string)
-    |> Stream.with_index(@col_offset)
+    |> Stream.with_index(0)
   end
 
   @spec do_locate(Enumerable.t(), at_most, t) :: {atom, list(t) | binary}
@@ -175,11 +175,11 @@ defmodule Sublocator do
     %{line: blines, col: bcol} = get_partial_loc(before)
     %{line: mlines, col: mcol} = get_partial_loc(match)
 
-    begin_line = blines - 1 + acc.end_loc.line
+    begin_line = blines + acc.end_loc.line
     begin_col = if begin_line === acc.end_loc.line, do: bcol + acc.end_loc.col, else: bcol
     begin_loc = new_loc(begin_line, begin_col + @col_offset)
 
-    end_line = begin_line + mlines - 1
+    end_line = begin_line + mlines
     end_col = if end_line === begin_line, do: begin_col + mcol, else: mcol
     end_loc = new_loc(end_line, end_col)
 
@@ -189,15 +189,9 @@ defmodule Sublocator do
   @spec get_partial_loc(binary) :: t
   defp get_partial_loc(str) do
     stream_lines(str)
-    |> safe_drop(1)
+    |> Enum.take(-1)
     |> Enum.at(0)
     |> line_info_to_loc()
-  end
-
-  @spec safe_drop(Enumerable.t(), integer) :: Enumerable.t()
-  defp safe_drop(list, cnt) do
-    dropped = Enum.drop(list, cnt)
-    if dropped == [], do: list, else: dropped
   end
 
   @spec line_info_to_loc({binary, integer}) :: t
