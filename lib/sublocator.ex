@@ -153,37 +153,40 @@ defmodule Sublocator do
     {:error, ":start value must be %{line: integer, col: integer}"}
   end
 
+  defp get_begin_loc(%{begin_loc: begin_loc}), do: begin_loc
+
+  defp include_loc?(loc, start) do
+    col_predicate = if loc.line === start.line, do: loc.col >= start.col, else: true
+    loc.line >= start.line && col_predicate
+  end
+
   @spec report_locs(Enumerable.t(binary), t) :: Enumerable.t(t)
   defp report_locs(parts, start) do
-    acc = %{begin_loc: new_loc(0, 0), end_loc: new_loc(1, 1)}
+    acc = %{begin_loc: new_loc(0, 0), end_loc: new_loc(1, 0)}
 
     parts
     |> Stream.scan(acc, &report_loc(&2, &1))
-    |> Stream.map(fn x -> x.begin_loc end)
-    |> Stream.filter(fn x ->
-      x.line >= start.line &&
-        if x.line == start.line do
-          x.col >= start.col
-        else
-          true
-        end
-    end)
+    |> Stream.map(&get_begin_loc/1)
+    |> Stream.filter(&include_loc?(&1, start))
   end
 
   @spec report_loc(%{begin_loc: t, end_loc: t}, {binary, binary}) :: %{begin_loc: t, end_loc: t}
   defp report_loc(acc, {before, match}) do
     %{line: blines, col: bcol} = get_partial_loc(before)
     %{line: mlines, col: mcol} = get_partial_loc(match)
-    line = blines - 1 + acc.end_loc.line
-    col = if line == acc.end_loc.line, do: bcol + acc.end_loc.col - 1, else: bcol
-    begin_loc = new_loc(line, col)
 
-    end_line = line + mlines - 1
-    end_col = if end_line == line, do: col + mcol, else: mcol
-    end_loc = new_loc(end_line, end_col - 1)
+    begin_line = blines - 1 + acc.end_loc.line
+    begin_col = if begin_line === acc.end_loc.line, do: bcol + acc.end_loc.col, else: bcol
+    begin_loc = new_loc(begin_line, begin_col + @col_offset)
+
+    end_line = begin_line + mlines - 1
+    end_col = if end_line === begin_line, do: begin_col + mcol, else: mcol
+    end_loc = new_loc(end_line, end_col)
+
     %{begin_loc: begin_loc, end_loc: end_loc}
   end
 
+  @spec get_partial_loc(binary) :: t
   defp get_partial_loc(str) do
     stream_lines(str)
     |> safe_drop(1)
@@ -191,13 +194,15 @@ defmodule Sublocator do
     |> line_info_to_loc()
   end
 
+  @spec safe_drop(Enumerable.t(), integer) :: Enumerable.t()
   defp safe_drop(list, cnt) do
     dropped = Enum.drop(list, cnt)
     if dropped == [], do: list, else: dropped
   end
 
+  @spec line_info_to_loc({binary, integer}) :: t
   defp line_info_to_loc(tup) do
     {str, line} = tup
-    new_loc(line, String.length(str) + 1)
+    new_loc(line, String.length(str))
   end
 end
