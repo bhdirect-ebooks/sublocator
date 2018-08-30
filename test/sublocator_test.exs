@@ -182,4 +182,34 @@ defmodule SublocatorTest do
 
     assert actual === [%{line: 20, col: 5}, %{line: 101, col: 5}]
   end
+
+  test "locates a multiline string", context do
+    {:ok, html} = context.test_file
+    {:ok, actual} = Sublocator.locate(html, "no answer.</p>\n<p>“You write uncommonly fast.")
+
+    assert actual === [%{line: 495, col: 12}]
+  end
+
+  test "locates several multiline strings", context do
+    {:ok, html} = context.test_file
+    {:ok, actual} = Sublocator.locate(html, "own.”</p>\n<p>“")
+
+    assert actual === [%{line: 503, col: 36}, %{line: 621, col: 57}]
+  end
+
+  test "locates several multiline regex matches", context do
+    {:ok, html} = context.test_file
+    {:ok, actual} = Sublocator.locate(html, ~r{own.”</p>\n<p>“})
+
+    assert actual === [%{line: 503, col: 36}, %{line: 621, col: 57}, %{line: 2689, col: 22}]
+  end
+
+  test "locates many multiline regex matches", context do
+    {:ok, html} = context.test_file
+    {:ok, actual} = Sublocator.locate(html, ~r{>\n.*?\n<})
+    partial = Enum.take(actual, 3)
+
+    assert Enum.count(actual) === 1329
+    assert partial === [%{line: 1, col: 38}, %{line: 3, col: 57}, %{line: 11, col: 53}]
+  end
 end
