@@ -5,6 +5,8 @@ defmodule Sublocator do
   Using `Sublocator.locate/3`, the pattern can be a string, a list of strings, or
   a regular expression, and the result is a list of simple line and column data or
   an empty list.
+
+  Multiline pattern support added in version 0.2.0
   """
   alias __MODULE__
 
@@ -33,7 +35,7 @@ defmodule Sublocator do
 
   Returns a list of these locations or an empty list if not found.
   The pattern can be a string, a list of strings, or a regular
-  expression.
+  expression, including multiline patterns.
 
   The returned locations are listed in the order found, from top to
   bottom, left to right.

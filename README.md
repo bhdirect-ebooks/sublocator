@@ -8,11 +8,13 @@ Using `Sublocator.locate/3`, the pattern can be a string, a list of strings, or
 a regular expression, and the result is a list of simple line and column data or
 an empty list.
 
+Multiline pattern support added in version 0.2.0
+
 ## Installation
 
 ```elixir
 def deps do
-  [{:sublocator, "~> 0.1.0"}]
+  [{:sublocator, "~> 0.2"}]
 end
 ```
 
